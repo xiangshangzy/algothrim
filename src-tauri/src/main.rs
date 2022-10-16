@@ -3,7 +3,7 @@
     windows_subsystem = "windows"
 )]
 
-use crate::dispaly::search;
+use crate::dispaly::{search, reset};
 
 mod dispaly;
 
@@ -15,9 +15,10 @@ fn greet(name: &str) -> String {
 #[tauri::command]
 fn test() {}
 
+
 fn main() {
     tauri::Builder::default()
-        .invoke_handler(tauri::generate_handler![greet, search, test])
+        .invoke_handler(tauri::generate_handler![greet, search, test,reset])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

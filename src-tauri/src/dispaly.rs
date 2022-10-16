@@ -1,7 +1,9 @@
-use std::{thread, time};
+use once_cell::sync::Lazy;
+use std::{sync::Mutex, thread, time};
 
 use tauri::{window, App, AppHandle, Window};
 
+static RESET: Lazy<Mutex<bool>> = Lazy::new(|| Mutex::new(false));
 struct Chess {
     target: [[i32; 3]; 3],
     count: i32,
@@ -41,7 +43,6 @@ impl Chess {
     fn new(target: [[i32; 3]; 3]) -> Chess {
         Self { target, count: 0 }
     }
-
     fn bfs(&self, states: Vec<[[i32; 3]; 3]>) {
         let mut children: Vec<[[i32; 3]; 3]> = Vec::new();
         for state in states {
@@ -107,18 +108,21 @@ impl Chess {
         let mut search: Vec<Node> = Vec::with_capacity(CAP);
         search.push(Node::new(state, 0, self.evaluate_h(state)));
         'lable: loop {
-            search.sort_by(|a, b| b.f.cmp(&a.f));
-            let min_state = search.pop().unwrap();
-
-            if min_state.h == 0 {
+            if *RESET.lock().unwrap() {
                 break 'lable;
             }
+            search.sort_by(|a, b| b.f.cmp(&a.f));
+            let min_state = search.pop().unwrap();
             let mut state: [i32; 9] = [0; 9];
             for i in 0..N {
                 state[i * N..(i + 1) * N].clone_from_slice(&min_state.state[i]);
             }
             window.emit("state", Payload { state }).unwrap();
             thread::sleep(time::Duration::from_millis(1000));
+            if min_state.h == 0 {
+                break 'lable;
+            }
+
             self.count += 1;
             for offset in OFFSEIS {
                 let (x_blank, y_blank) = blank(&min_state.state);
@@ -167,6 +171,7 @@ struct Payload {
 
 #[tauri::command]
 pub fn search(window: Window, state: [i32; N * N], target: [i32; N * N]) {
+    *RESET.lock().unwrap() = false;
     thread::spawn(move || {
         let mut state_: [[i32; N]; N] = [[0; N]; N];
         let mut target_: [[i32; N]; N] = [[0; N]; N];
@@ -180,4 +185,8 @@ pub fn search(window: Window, state: [i32; N * N], target: [i32; N * N]) {
         }
         chess.a_display(window, state_);
     });
+}
+#[tauri::command]
+pub fn reset() {
+    *RESET.lock().unwrap() = true;
 }

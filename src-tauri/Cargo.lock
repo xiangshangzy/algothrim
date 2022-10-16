@@ -27,6 +27,7 @@ dependencies = [
 name = "algothrim"
 version = "0.0.0"
 dependencies = [
+ "once_cell",
  "serde",
  "serde_json",
  "tauri",
